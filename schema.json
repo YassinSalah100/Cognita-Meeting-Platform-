@@ -1,0 +1,932 @@
+{
+  "database": "CognitaAI",
+  "version": "vFinal-2025",
+  "description": "Full 62-table relational schema for Cognita AI meeting, transcript, billing, analytics and multilingual platform.",
+  "tables": [
+    {
+      "id": 1,
+      "name": "orgs",
+      "description": "Organizations that own users, workspaces and billing accounts.",
+      "fields": [
+        { "name": "org_id", "type": "UUID", "pk": true },
+        { "name": "name", "type": "TEXT" },
+        { "name": "billing_account_id", "type": "UUID" },
+        { "name": "created_at", "type": "TIMESTAMP" },
+        { "name": "retention_policy", "type": "JSON" },
+        { "name": "settings", "type": "JSON" }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "users",
+      "description": "Platform end users; may belong to orgs or standalone workspaces.",
+      "fields": [
+        { "name": "user_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "role_id", "type": "UUID" },
+        { "name": "email", "type": "TEXT" },
+        { "name": "display_name", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "preferences", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "roles",
+      "description": "Role definitions at org or workspace level; supports inheritance.",
+      "fields": [
+        { "name": "role_id", "type": "UUID", "pk": true },
+        { "name": "name", "type": "TEXT" },
+        { "name": "scope", "type": "TEXT" },
+        { "name": "inherits_from", "type": "UUID" },
+        { "name": "description", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "permissions",
+      "description": "Permission registry for RBAC model.",
+      "fields": [
+        { "name": "permission_id", "type": "SERIAL", "pk": true },
+        { "name": "name", "type": "TEXT" },
+        { "name": "description", "type": "TEXT" },
+        { "name": "scope", "type": "TEXT" }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "role_permissions",
+      "description": "Links permissions to roles.",
+      "fields": [
+        { "name": "role_id", "type": "UUID" },
+        { "name": "scope", "type": "TEXT" },
+        { "name": "permission_id", "type": "INT" }
+      ],
+      "composite_pk": ["role_id", "scope", "permission_id"]
+    },
+    {
+      "id": 6,
+      "name": "permission_assignments",
+      "description": "Direct user-permission mapping.",
+      "fields": [
+        { "name": "assignment_id", "type": "UUID", "pk": true },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "permission_id", "type": "INT" },
+        { "name": "granted_by", "type": "UUID" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "workspaces",
+      "description": "Workspaces grouping meetings, files, and members.",
+      "fields": [
+        { "name": "workspace_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "name", "type": "TEXT" },
+        { "name": "description", "type": "TEXT" },
+        { "name": "created_by", "type": "UUID" },
+        { "name": "visibility", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "workspace_members",
+      "description": "Users participating in a workspace.",
+      "fields": [
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "role", "type": "TEXT" },
+        { "name": "joined_at", "type": "TIMESTAMP" }
+      ],
+      "composite_pk": ["workspace_id", "user_id"]
+    },
+    {
+      "id": 9,
+      "name": "meetings",
+      "description": "Core meeting entity.",
+      "fields": [
+        { "name": "meeting_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "title", "type": "TEXT" },
+        { "name": "room_id", "type": "TEXT" },
+        { "name": "created_by", "type": "UUID" },
+        { "name": "start_time", "type": "TIMESTAMP" },
+        { "name": "end_time", "type": "TIMESTAMP" },
+        { "name": "state", "type": "TEXT" },
+        { "name": "recording_url", "type": "TEXT" },
+        { "name": "recording_s3_key", "type": "TEXT" },
+        { "name": "retention_policy", "type": "JSON" },
+        { "name": "consent_artifact_id", "type": "UUID" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "participants",
+      "description": "Meeting attendees and join/leave metadata.",
+      "fields": [
+        { "name": "participant_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "display_name", "type": "TEXT" },
+        { "name": "join_time", "type": "TIMESTAMP" },
+        { "name": "leave_time", "type": "TIMESTAMP" },
+        { "name": "role", "type": "TEXT" },
+        { "name": "speaker_label", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "meeting_metrics",
+      "description": "User speaking/engagement metrics per meeting.",
+      "fields": [
+        { "name": "metric_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "talk_time_seconds", "type": "INT" },
+        { "name": "interruptions_count", "type": "INT" },
+        { "name": "attention_score", "type": "FLOAT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "transcripts",
+      "description": "Full transcript metadata for a meeting.",
+      "fields": [
+        { "name": "transcript_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "s3_uri", "type": "TEXT" },
+        { "name": "language", "type": "TEXT" },
+        { "name": "model", "type": "TEXT" },
+        { "name": "word_count", "type": "INT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "transcript_segments",
+      "description": "Individual transcript fragments with diarization.",
+      "fields": [
+        { "name": "segment_id", "type": "UUID", "pk": true },
+        { "name": "transcript_id", "type": "UUID" },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "sequence_num", "type": "INT" },
+        { "name": "start_ms", "type": "INT" },
+        { "name": "end_ms", "type": "INT" },
+        { "name": "speaker_label", "type": "TEXT" },
+        { "name": "speaker_user_id", "type": "UUID" },
+        { "name": "text", "type": "TEXT" },
+        { "name": "confidence", "type": "FLOAT" },
+        { "name": "is_final", "type": "BOOLEAN" }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "translations",
+      "description": "Translations for transcript segments.",
+      "fields": [
+        { "name": "translation_id", "type": "UUID", "pk": true },
+        { "name": "segment_id", "type": "UUID" },
+        { "name": "target_language", "type": "TEXT" },
+        { "name": "translated_text", "type": "TEXT" },
+        { "name": "model", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "summaries",
+      "description": "AI-generated summaries for meetings.",
+      "fields": [
+        { "name": "summary_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "level", "type": "TEXT" },
+        { "name": "role_context", "type": "TEXT" },
+        { "name": "model", "type": "TEXT" },
+        { "name": "model_version", "type": "TEXT" },
+        { "name": "text", "type": "TEXT" },
+        { "name": "citations", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "action_items",
+      "description": "Tasks derived from meeting discussions.",
+      "fields": [
+        { "name": "action_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "text", "type": "TEXT" },
+        { "name": "assigned_to_user_id", "type": "UUID" },
+        { "name": "deadline", "type": "DATE" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "source_segment_id", "type": "UUID" },
+        { "name": "external_ref", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "task_sync_logs",
+      "description": "Synchronization logs with external task managers.",
+      "fields": [
+        { "name": "sync_id", "type": "UUID", "pk": true },
+        { "name": "action_id", "type": "UUID" },
+        { "name": "external_system", "type": "TEXT" },
+        { "name": "external_task_id", "type": "TEXT" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "request_payload", "type": "JSON" },
+        { "name": "response_payload", "type": "JSON" },
+        { "name": "attempts", "type": "INT" },
+        { "name": "last_attempted_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "calendar_events",
+      "description": "Calendar integration and event sync.",
+      "fields": [
+        { "name": "event_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "external_system", "type": "TEXT" },
+        { "name": "external_event_id", "type": "TEXT" },
+        { "name": "start_time", "type": "TIMESTAMP" },
+        { "name": "end_time", "type": "TIMESTAMP" },
+        { "name": "status", "type": "TEXT" }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "integrations",
+      "description": "Integration providers connected to workspaces/orgs.",
+      "fields": [
+        { "name": "integration_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "provider", "type": "TEXT" },
+        { "name": "config", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "integration_links",
+      "description": "Links individual user accounts to external integrations.",
+      "fields": [
+        { "name": "link_id", "type": "UUID", "pk": true },
+        { "name": "integration_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "external_account_id", "type": "TEXT" },
+        { "name": "scopes", "type": "JSON" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "consent_artifacts",
+      "description": "Records of participant consent (recording, transcription, AI processing).",
+      "fields": [
+        { "name": "consent_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "consent_scope", "type": "TEXT" },
+        { "name": "consent_payload", "type": "JSON" },
+        { "name": "signature", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 22,
+      "name": "notifications",
+      "description": "Delivery tracking for user/org notifications across channels.",
+      "fields": [
+        { "name": "notification_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "channel", "type": "TEXT" },
+        { "name": "payload", "type": "JSON" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "failure_reason", "type": "TEXT" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "created_at", "type": "TIMESTAMP" },
+        { "name": "delivered_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 23,
+      "name": "shared_notes",
+      "description": "Snapshots of external docs (Notion, Google Docs) linked to meetings.",
+      "fields": [
+        { "name": "note_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "external_system", "type": "TEXT" },
+        { "name": "content", "type": "TEXT" },
+        { "name": "external_ref", "type": "TEXT" }
+      ]
+    },
+    {
+      "id": 24,
+      "name": "quizzes",
+      "description": "Quizzes created for meetings/courses.",
+      "fields": [
+        { "name": "quiz_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "title", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_by_model", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 25,
+      "name": "quiz_questions",
+      "description": "Questions for quizzes (multiple choice, open text).",
+      "fields": [
+        { "name": "question_id", "type": "UUID", "pk": true },
+        { "name": "quiz_id", "type": "UUID" },
+        { "name": "sequence", "type": "INT" },
+        { "name": "question_text", "type": "TEXT" },
+        { "name": "options", "type": "JSON" },
+        { "name": "correct_answer", "type": "TEXT" },
+        { "name": "citations", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 26,
+      "name": "quiz_attempts",
+      "description": "Records of user quiz attempts.",
+      "fields": [
+        { "name": "attempt_id", "type": "UUID", "pk": true },
+        { "name": "quiz_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "score", "type": "NUMERIC" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 27,
+      "name": "quiz_attempt_details",
+      "description": "Per-question answers inside a quiz attempt.",
+      "fields": [
+        { "name": "detail_id", "type": "UUID", "pk": true },
+        { "name": "attempt_id", "type": "UUID" },
+        { "name": "question_id", "type": "UUID" },
+        { "name": "answer_text", "type": "TEXT" },
+        { "name": "is_correct", "type": "BOOLEAN" },
+        { "name": "answered_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 28,
+      "name": "knowledge_index",
+      "description": "Semantic embeddings and metadata for search / QA.",
+      "fields": [
+        { "name": "knowledge_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "transcript_id", "type": "UUID" },
+        { "name": "segment_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "topic", "type": "TEXT" },
+        { "name": "keywords", "type": "TEXT[]" },
+        { "name": "vector", "type": "VECTOR" },
+        { "name": "sentiment", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 29,
+      "name": "audit_logs",
+      "description": "Immutable action logs for security and compliance.",
+      "fields": [
+        { "name": "log_id", "type": "BIGSERIAL", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "action", "type": "TEXT" },
+        { "name": "resource_type", "type": "TEXT" },
+        { "name": "resource_id", "type": "UUID" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 30,
+      "name": "workspace_files",
+      "description": "Files stored or linked inside workspaces.",
+      "fields": [
+        { "name": "file_id", "type": "UUID", "pk": true },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "uploader_id", "type": "UUID" },
+        { "name": "file_name", "type": "TEXT" },
+        { "name": "storage_path", "type": "TEXT" },
+        { "name": "file_type", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 31,
+      "name": "noise_cancellation_sessions",
+      "description": "Processing runs for noise cancellation on media.",
+      "fields": [
+        { "name": "session_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "model", "type": "TEXT" },
+        { "name": "model_version", "type": "TEXT" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "noise_reduction_level", "type": "FLOAT" },
+        { "name": "latency_ms", "type": "INT" },
+        { "name": "output_s3_key", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 32,
+      "name": "analytics_user_meeting_performance",
+      "description": "Precomputed performance metrics for user/meeting.",
+      "fields": [
+        { "name": "user_id", "type": "UUID" },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "meeting_start_time", "type": "TIMESTAMPTZ" },
+        { "name": "talk_time_seconds", "type": "INT" },
+        { "name": "talk_time_percentage", "type": "FLOAT" },
+        { "name": "interruptions_count", "type": "INT" },
+        { "name": "attention_score", "type": "FLOAT" },
+        { "name": "action_items_assigned", "type": "INT" },
+        { "name": "speaking_patterns", "type": "JSONB" },
+        { "name": "updated_at", "type": "TIMESTAMPTZ" }
+      ],
+      "composite_pk": ["user_id", "meeting_id"]
+    },
+    {
+      "id": 33,
+      "name": "analytics_user_knowledge_map",
+      "description": "Tracks topics and expertise areas per user.",
+      "fields": [
+        { "name": "user_id", "type": "UUID" },
+        { "name": "topic_name", "type": "TEXT" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "total_discussion_seconds", "type": "INT" },
+        { "name": "related_meetings", "type": "UUID[]" },
+        { "name": "last_discussed_at", "type": "TIMESTAMPTZ" }
+      ],
+      "composite_pk": ["user_id", "topic_name"]
+    },
+    {
+      "id": 34,
+      "name": "org_members",
+      "description": "Relationship of users to organizations with a role id.",
+      "fields": [
+        { "name": "org_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "role_id", "type": "UUID" },
+        { "name": "joined_at", "type": "TIMESTAMP" }
+      ],
+      "composite_pk": ["org_id", "user_id"]
+    },
+    {
+      "id": 35,
+      "name": "permission_audit_logs",
+      "description": "Audit trail for permission & role changes.",
+      "fields": [
+        { "name": "audit_id", "type": "BIGSERIAL", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "permission_id", "type": "INT" },
+        { "name": "role_name", "type": "TEXT" },
+        { "name": "action", "type": "TEXT" },
+        { "name": "performed_by", "type": "UUID" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 36,
+      "name": "ownership_transfers",
+      "description": "Tracks transfers of ownership for workspaces/orgs.",
+      "fields": [
+        { "name": "transfer_id", "type": "UUID", "pk": true },
+        { "name": "entity_type", "type": "TEXT" },
+        { "name": "entity_id", "type": "UUID" },
+        { "name": "previous_owner_id", "type": "UUID" },
+        { "name": "new_owner_id", "type": "UUID" },
+        { "name": "initiated_by", "type": "UUID" },
+        { "name": "reason", "type": "TEXT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 37,
+      "name": "billing_providers",
+      "description": "External billing provider configurations (Stripe, Paddle...).",
+      "fields": [
+        { "name": "provider_id", "type": "UUID", "pk": true },
+        { "name": "name", "type": "TEXT" },
+        { "name": "api_key_ref", "type": "TEXT" },
+        { "name": "webhook_endpoint", "type": "TEXT" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 38,
+      "name": "billing_accounts",
+      "description": "Holds payer identity & currency for billing operations.",
+      "fields": [
+        { "name": "billing_account_id", "type": "UUID", "pk": true },
+        { "name": "payer_user_id", "type": "UUID" },
+        { "name": "provider_id", "type": "UUID" },
+        { "name": "external_customer_id", "type": "TEXT" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "currency_code_id", "type": "UUID" },
+        { "name": "payment_payment_id", "type": "UUID" },
+        { "name": "billing_email", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 39,
+      "name": "subscription_add_ons",
+      "description": "Add-on line items attached to subscriptions.",
+      "fields": [
+        { "name": "add_on_id", "type": "UUID", "pk": true },
+        { "name": "subscription_id", "type": "UUID" },
+        { "name": "name", "type": "TEXT" },
+        { "name": "description", "type": "TEXT" },
+        { "name": "addon_type", "type": "TEXT" },
+        { "name": "quantity", "type": "INT" },
+        { "name": "price_per_unit", "type": "NUMERIC" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "start_date", "type": "DATE" },
+        { "name": "end_date", "type": "DATE" }
+      ]
+    },
+    {
+      "id": 40,
+      "name": "workspace_languages",
+      "description": "Which languages are enabled and how in each workspace.",
+      "fields": [
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "language_code", "type": "TEXT" },
+        { "name": "enabled_for_transcription", "type": "BOOLEAN" },
+        { "name": "enabled_for_summaries", "type": "BOOLEAN" },
+        { "name": "enabled_for_ui", "type": "BOOLEAN" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ],
+      "composite_pk": ["workspace_id", "language_code"]
+    },
+    {
+      "id": 41,
+      "name": "invoices",
+      "description": "Invoices generated for billing accounts and subscriptions.",
+      "fields": [
+        { "name": "invoice_id", "type": "UUID", "pk": true },
+        { "name": "billing_account_id", "type": "UUID" },
+        { "name": "subscription_id", "type": "UUID" },
+        { "name": "period_start", "type": "DATE" },
+        { "name": "period_end", "type": "DATE" },
+        { "name": "total_amount", "type": "NUMERIC" },
+        { "name": "currency_code_id", "type": "UUID" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "issued_at", "type": "TIMESTAMP" },
+        { "name": "paid_at", "type": "TIMESTAMP" },
+        { "name": "due_date", "type": "DATE" },
+        { "name": "external_invoice_id", "type": "TEXT" },
+        { "name": "line_items", "type": "JSON" },
+        { "name": "metadata", "type": "JSON" }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "invoice_events",
+      "description": "Tracks state changes or webhooks related to invoices.",
+      "fields": [
+        { "name": "event_id", "type": "UUID", "pk": true },
+        { "name": "invoice_id", "type": "UUID" },
+        { "name": "event_type", "type": "TEXT" },
+        { "name": "details", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "billing_audit_logs",
+      "description": "Auditing for billing activities (plan upgrades, cancellations, retries).",
+      "fields": [
+        { "name": "log_id", "type": "BIGSERIAL", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "subscription_id", "type": "UUID" },
+        { "name": "user_id", "type": "UUID" },
+        { "name": "action", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "plans_catalog",
+      "description": "Defines base plans, entitlements, and monthly pricing.",
+      "fields": [
+        { "name": "plan_id", "type": "UUID", "pk": true },
+        { "name": "name", "type": "TEXT" },
+        { "name": "type", "type": "TEXT" },
+        { "name": "quota", "type": "JSON" },
+        { "name": "entitlements", "type": "JSON" },
+        { "name": "price_per_month", "type": "NUMERIC" },
+        { "name": "currency_code_id", "type": "UUID" },
+        { "name": "active", "type": "BOOLEAN" },
+        { "name": "created_at", "type": "TIMESTAMP" },
+        { "name": "updated_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 45,
+      "name": "billing_payment_methods",
+      "description": "Manages all available payment methods for a billing account.",
+      "fields": [
+        { "name": "payment_method_id", "type": "UUID", "pk": true },
+        { "name": "billing_account_id", "type": "UUID" },
+        { "name": "type", "type": "TEXT" },
+        { "name": "external_ref", "type": "TEXT" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "last4", "type": "TEXT" },
+        { "name": "exp_date", "type": "DATE" },
+        { "name": "added_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 46,
+      "name": "usage_records",
+      "description": "Fine-grained usage tracking by subscription/org/workspace.",
+      "fields": [
+        { "name": "usage_record_id", "type": "UUID", "pk": true },
+        { "name": "subscription_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "metric_type", "type": "TEXT" },
+        { "name": "value", "type": "NUMERIC" },
+        { "name": "period_start", "type": "DATE" },
+        { "name": "period_end", "type": "DATE" },
+        { "name": "source_system", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 47,
+      "name": "usage_aggregates",
+      "description": "Monthly rollups per org or subscription for analytics.",
+      "fields": [
+        { "name": "org_id", "type": "UUID" },
+        { "name": "subscription_id", "type": "UUID" },
+        { "name": "metric_type", "type": "TEXT" },
+        { "name": "total_value", "type": "NUMERIC" },
+        { "name": "period_start", "type": "DATE" },
+        { "name": "period_end", "type": "DATE" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ],
+      "composite_pk": ["org_id", "subscription_id", "metric_type", "period_start"]
+    },
+    {
+      "id": 48,
+      "name": "currency_catalog",
+      "description": "Master list of supported currencies.",
+      "fields": [
+        { "name": "currency_code_id", "type": "UUID", "pk": true },
+        { "name": "currency_code", "type": "TEXT" },
+        { "name": "symbol", "type": "TEXT" },
+        { "name": "name", "type": "TEXT" },
+        { "name": "decimal_places", "type": "INT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 49,
+      "name": "exchange_rate_history",
+      "description": "Exchange rate changes for supported currencies.",
+      "fields": [
+        { "name": "rate_id", "type": "UUID", "pk": true },
+        { "name": "base_currency_code_id", "type": "UUID" },
+        { "name": "target_currency_code_id", "type": "UUID" },
+        { "name": "rate", "type": "NUMERIC" },
+        { "name": "effective_date", "type": "DATE" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 50,
+      "name": "localization_languages",
+      "description": "Supported languages for system UI and AI models.",
+      "fields": [
+        { "name": "language_code", "type": "TEXT", "pk": true },
+        { "name": "language_name", "type": "TEXT" },
+        { "name": "direction", "type": "TEXT" },
+        { "name": "default_region", "type": "TEXT" },
+        { "name": "is_active", "type": "BOOLEAN" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 51,
+      "name": "meeting_languages",
+      "description": "Defines languages used in a meeting for transcription and translation.",
+      "fields": [
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "language_code", "type": "TEXT" },
+        { "name": "usage_type", "type": "TEXT" },
+        { "name": "is_primary", "type": "BOOLEAN" },
+        { "name": "confidence_score", "type": "FLOAT" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ],
+      "composite_pk": ["meeting_id", "language_code"]
+    },
+    {
+      "id": 52,
+      "name": "localized_content",
+      "description": "Localized text versions of UI and generated summaries.",
+      "fields": [
+        { "name": "content_id", "type": "UUID", "pk": true },
+        { "name": "entity_type", "type": "TEXT" },
+        { "name": "entity_id", "type": "UUID" },
+        { "name": "language_code", "type": "TEXT" },
+        { "name": "localized_text", "type": "TEXT" },
+        { "name": "metadata", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 53,
+      "name": "plan_history",
+      "description": "Tracks historical changes in plans and entitlements.",
+      "fields": [
+        { "name": "history_id", "type": "UUID", "pk": true },
+        { "name": "plan_id", "type": "UUID" },
+        { "name": "change_type", "type": "TEXT" },
+        { "name": "old_value", "type": "JSON" },
+        { "name": "new_value", "type": "JSON" },
+        { "name": "changed_by", "type": "UUID" },
+        { "name": "changed_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 54,
+      "name": "subscription_history",
+      "description": "Logs transitions in subscription state.",
+      "fields": [
+        { "name": "record_id", "type": "UUID", "pk": true },
+        { "name": "subscription_id", "type": "UUID" },
+        { "name": "previous_status", "type": "TEXT" },
+        { "name": "new_status", "type": "TEXT" },
+        { "name": "changed_at", "type": "TIMESTAMP" },
+        { "name": "reason", "type": "TEXT" }
+      ]
+    },
+    {
+      "id": 55,
+      "name": "workspace_usage_aggregates",
+      "description": "Monthly aggregated metrics per workspace for usage analytics.",
+      "fields": [
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "metric_type", "type": "TEXT" },
+        { "name": "total_value", "type": "NUMERIC" },
+        { "name": "period_start", "type": "DATE" },
+        { "name": "period_end", "type": "DATE" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ],
+      "composite_pk": ["workspace_id", "metric_type", "period_start"]
+    },
+    {
+      "id": 56,
+      "name": "organization_settings",
+      "description": "Custom configuration and localization settings per organization.",
+      "fields": [
+        { "name": "org_id", "type": "UUID", "pk": true },
+        { "name": "default_language", "type": "TEXT" },
+        { "name": "timezone", "type": "TEXT" },
+        { "name": "currency_code_id", "type": "UUID" },
+        { "name": "ai_summary_level", "type": "TEXT" },
+        { "name": "retention_policy", "type": "JSON" },
+        { "name": "created_at", "type": "TIMESTAMP" },
+        { "name": "updated_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 57,
+      "name": "meeting_analysis",
+      "description": "AI-driven analytic summaries, sentiment and bias flags.",
+      "fields": [
+        { "name": "analysis_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "bias_flag_count", "type": "INT" },
+        { "name": "sentiment_score", "type": "FLOAT" },
+        { "name": "effectiveness_score", "type": "FLOAT" },
+        { "name": "morale_prediction", "type": "FLOAT" },
+        { "name": "summary_ref_id", "type": "UUID" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 58,
+      "name": "ai_recommendations",
+      "description": "AI suggestions generated during or after meetings.",
+      "fields": [
+        { "name": "recommendation_id", "type": "UUID", "pk": true },
+        { "name": "meeting_id", "type": "UUID" },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "recommendation_type", "type": "TEXT" },
+        { "name": "content", "type": "TEXT" },
+        { "name": "confidence", "type": "FLOAT" },
+        { "name": "accepted_by_user_id", "type": "UUID" },
+        { "name": "created_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 59,
+      "name": "organization_reports",
+      "description": "Aggregated KPIs and analysis per organization.",
+      "fields": [
+        { "name": "report_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "period_start", "type": "DATE" },
+        { "name": "period_end", "type": "DATE" },
+        { "name": "report_type", "type": "TEXT" },
+        { "name": "metrics", "type": "JSON" },
+        { "name": "generated_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 60,
+      "name": "workspace_reports",
+      "description": "Periodic AI insights and analytics for workspaces.",
+      "fields": [
+        { "name": "report_id", "type": "UUID", "pk": true },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "period_start", "type": "DATE" },
+        { "name": "period_end", "type": "DATE" },
+        { "name": "report_type", "type": "TEXT" },
+        { "name": "metrics", "type": "JSON" },
+        { "name": "generated_at", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 61,
+      "name": "language_model_usage",
+      "description": "Tracks AI model usage by organization/workspace for billing and analytics.",
+      "fields": [
+        { "name": "record_id", "type": "UUID", "pk": true },
+        { "name": "org_id", "type": "UUID" },
+        { "name": "workspace_id", "type": "UUID" },
+        { "name": "model_name", "type": "TEXT" },
+        { "name": "tokens_used", "type": "NUMERIC" },
+        { "name": "cost_in_currency", "type": "NUMERIC" },
+        { "name": "currency_code_id", "type": "UUID" },
+        { "name": "usage_timestamp", "type": "TIMESTAMP" }
+      ]
+    },
+    {
+      "id": 62,
+      "name": "system_jobs",
+      "description": "Background and scheduled task tracking (e.g., summarization, report generation).",
+      "fields": [
+        { "name": "job_id", "type": "UUID", "pk": true },
+        { "name": "job_type", "type": "TEXT" },
+        { "name": "target_entity_type", "type": "TEXT" },
+        { "name": "target_entity_id", "type": "UUID" },
+        { "name": "status", "type": "TEXT" },
+        { "name": "payload", "type": "JSON" },
+        { "name": "scheduled_at", "type": "TIMESTAMP" },
+        { "name": "started_at", "type": "TIMESTAMP" },
+        { "name": "completed_at", "type": "TIMESTAMP" },
+        { "name": "attempts", "type": "INT" }
+      ]
+    }
+  ]
+}
